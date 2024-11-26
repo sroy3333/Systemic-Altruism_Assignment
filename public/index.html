@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grading System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>LLM Grading System</h1>
+
+  <!-- Existing functionality section -->
+  <div id="existing-functionality">
+    <!-- Retain your current UI components here -->
+  </div>
+
+  <!-- New functionality for grading answers -->
+  <div id="grading-section">
+    <h2>Submit Question-Answer Sets for Grading</h2>
+    <form id="grading-form">
+      <div id="qa-container">
+        <div class="qa-pair">
+          <label for="question-1">Question:</label>
+          <textarea id="question-1" name="question"></textarea>
+          <label for="answer-1">Answer:</label>
+          <textarea id="answer-1" name="answer"></textarea>
+        </div>
+      </div>
+      <button type="button" id="add-qa-pair">Add Another QA Pair</button>
+      <button type="submit">Submit for Grading</button>
+    </form>
+
+    <h2>Graded Responses</h2>
+    <div id="graded-responses"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const gradingForm = document.getElementById('grading-form');
+      const qaContainer = document.getElementById('qa-container');
+      const gradedResponsesDiv = document.getElementById('graded-responses');
+      const addQAPairButton = document.getElementById('add-qa-pair');
+
+      // Add a new QA pair input
+      addQAPairButton.addEventListener('click', () => {
+        const qaPairDiv = document.createElement('div');
+        qaPairDiv.classList.add('qa-pair');
+        qaPairDiv.innerHTML = `
+          <label>Question:</label>
+          <textarea name="question"></textarea>
+          <label>Answer:</label>
+          <textarea name="answer"></textarea>
+        `;
+        qaContainer.appendChild(qaPairDiv);
+      });
+
+      // Handle form submission
+      gradingForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Collect question-answer data
+        const qaPairs = [];
+        const qaDivs = document.querySelectorAll('.qa-pair');
+        qaDivs.forEach((div) => {
+          const question = div.querySelector('textarea[name="question"]').value.trim();
+          const answer = div.querySelector('textarea[name="answer"]').value.trim();
+          if (question && answer) {
+            qaPairs.push({ question, answer });
+          }
+        });
+
+        if (qaPairs.length === 0) {
+          alert('Please provide at least one question-answer pair.');
+          return;
+        }
+
+        // Send data to the backend
+        try {
+          const response = await fetch('/api/grade-answers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ studentAnswers: qaPairs }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+          }
+
+          const { gradedAnswers } = await response.json();
+
+          // Display graded responses
+          gradedResponsesDiv.innerHTML = '';
+          gradedAnswers.forEach(({ question, answer, feedback, score }, index) => {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.classList.add('graded-answer');
+            feedbackDiv.innerHTML = `
+              <h3>QA Pair ${index + 1}</h3>
+              <p><strong>Question:</strong> ${question}</p>
+              <p><strong>Answer:</strong> ${answer}</p>
+              <p><strong>Score:</strong> ${score || 'N/A'}</p>
+              <p><strong>Feedback:</strong> ${feedback}</p>
+            `;
+            gradedResponsesDiv.appendChild(feedbackDiv);
+          });
+        } catch (error) {
+          console.error('Error grading answers:', error.message);
+          alert('There was an error grading the answers. Please try again.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
